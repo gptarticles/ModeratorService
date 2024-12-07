@@ -7,9 +7,9 @@ import java.time.ZonedDateTime;
 
 public class TestUtils {
     /**
-     * Creates an instance of {@link Instant}
+     * Creates an instance of {@link Instant}.
      * <br/>
-     * For example, createDate(2024, 1, 1, 17, 40, 0) returns Date instance of January 1st 2024 17:40:00
+     * For example, createDate(2024, 1, 1, 17, 40, 0) returns Date instance of January 1st 2024 17:40:00 UTC.
      * @param year Year
      * @param month Month
      * @param day Day

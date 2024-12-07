@@ -2,10 +2,12 @@ package me.zedaster.moderationservice.controller;
 
 import lombok.RequiredArgsConstructor;
 import me.zedaster.moderationservice.dto.*;
-import me.zedaster.moderationservice.service.ArticleNotFoundException;
-import me.zedaster.moderationservice.service.ModerationService;
+import me.zedaster.moderationservice.service.NoSuchArticleException;
+import me.zedaster.moderationservice.service.ArticleModerationService;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.ConnectException;
 import java.util.List;
 
 /**
@@ -18,7 +20,7 @@ public class ProtectedModerationController {
     /**
      * Moderation service
      */
-    private final ModerationService moderationService;
+    private final ArticleModerationService articleModerationService;
 
     /**
      * Get moderating articles of authorized user
@@ -30,7 +32,7 @@ public class ProtectedModerationController {
     public List<ArticleSummary> getUserArticles(
             @RequestParam("tokenPayload[userId]") long userId,
             @RequestParam(value = "page", required = false) Integer pageNumber) {
-        return moderationService.getUserArticleSummaries(userId, pageNumber);
+        return articleModerationService.getUserArticleSummaries(userId, pageNumber);
     }
 
     /**
@@ -41,15 +43,15 @@ public class ProtectedModerationController {
      * @return Article object
      */
     @GetMapping("/articles/{id}")
+    @Transactional
     public Article getParticularArticle(@RequestParam("tokenPayload[role]") Role role,
                                         @RequestParam("tokenPayload[userId]") long userId,
-                                        @PathVariable("id") long id)
-            throws ArticleNotFoundException, NoAccessException {
-        if (role == Role.USER && !moderationService.userOwnArticle(userId, id)) {
+                                        @PathVariable("id") long id) throws ConnectException {
+        if (role == Role.USER && !articleModerationService.userOwnArticle(userId, id)) {
             throw new NoAccessException();
         }
 
-        return moderationService.getArticle(id);
+        return articleModerationService.getArticle(id);
     }
 
     /**
@@ -58,8 +60,8 @@ public class ProtectedModerationController {
      * @param createArticleDto Article data
      */
     @PostMapping("/articles")
-    public void createArticle(@RequestParam("tokenPayload[userId]") long userId, @RequestBody CreateArticleDto createArticleDto) {
-        moderationService.createArticle(userId, createArticleDto);
+    public void createArticle(@RequestParam("tokenPayload[userId]") long userId, @RequestBody CreateArticleDto createArticleDto) throws ConnectException {
+        articleModerationService.saveArticle(userId, createArticleDto);
     }
 
     /**
@@ -72,9 +74,9 @@ public class ProtectedModerationController {
     @GetMapping("/articles")
     public List<NamedArticleSummary> getAllArticles(
             @RequestParam("tokenPayload[role]") Role role,
-            @RequestParam(value = "page", required = false) Integer pageNumber) throws NoAccessException {
+            @RequestParam(value = "page", required = false) Integer pageNumber) throws ConnectException {
         assertRoleCanModerate(role);
-        return moderationService.getArticleSummaries(pageNumber);
+        return articleModerationService.getArticleSummaries(pageNumber);
     }
 
     /**
@@ -82,13 +84,12 @@ public class ProtectedModerationController {
      * @param role Role of authorized user
      * @param id Article ID
      * @throws NoAccessException If user has no access to this method
-     * @throws ArticleNotFoundException If article was not found by specified ID
+     * @throws NoSuchArticleException If article was not found by specified ID
      */
     @PatchMapping("/articles/{id}/accept")
-    public void acceptArticle(@RequestParam("tokenPayload[role]") Role role, @PathVariable("id") long id)
-            throws NoAccessException, ArticleNotFoundException {
+    public void acceptArticle(@RequestParam("tokenPayload[role]") Role role, @PathVariable("id") long id) throws ConnectException {
         assertRoleCanModerate(role);
-        moderationService.publishArticle(id);
+        articleModerationService.publishArticle(id);
     }
 
     /**
@@ -97,16 +98,15 @@ public class ProtectedModerationController {
      * @param id Article ID
      * @param askEditDto Comment about the article
      * @throws NoAccessException If user has no access to this method
-     * @throws ArticleNotFoundException If article was not found by specified ID
+     * @throws NoSuchArticleException If article was not found by specified ID
      */
     @PatchMapping("/articles/{id}/askEdit")
     public void askEditArticle(
             @RequestParam("tokenPayload[role]") Role role,
             @PathVariable("id") long id,
-            @RequestBody AskEditDto askEditDto)
-            throws NoAccessException, ArticleNotFoundException {
+            @RequestBody AskEditDto askEditDto) {
         assertRoleCanModerate(role);
-        moderationService.askEdit(id, askEditDto.getComment());
+        articleModerationService.askEdit(id, askEditDto.getComment());
     }
 
     /**
@@ -114,16 +114,15 @@ public class ProtectedModerationController {
      * @param role Role of authorized user
      * @param id Article ID
      * @throws NoAccessException If user has no access to this method
-     * @throws ArticleNotFoundException If article was not found by specified ID
+     * @throws NoSuchArticleException If article was not found by specified ID
      */
     @DeleteMapping("/articles/{id}")
-    public void removeArticle(@RequestParam("tokenPayload[role]") Role role, @PathVariable("id") long id)
-            throws NoAccessException, ArticleNotFoundException {
+    public void removeArticle(@RequestParam("tokenPayload[role]") Role role, @PathVariable("id") long id) throws ConnectException {
         assertRoleCanModerate(role);
-        moderationService.removeArticle(id);
+        articleModerationService.removeArticle(id);
     }
 
-    private void assertRoleCanModerate(Role role) throws NoAccessException {
+    private void assertRoleCanModerate(Role role)  {
         if (!role.canModerate()) {
             throw new NoAccessException();
         }

@@ -2,8 +2,6 @@ package me.zedaster.moderationservice.dto;
 
 import lombok.Getter;
 
-import java.time.Instant;
-
 /**
  * Summary of some article with creator data
  */
@@ -14,8 +12,12 @@ public class NamedArticleSummary extends ArticleSummary {
      */
     private final Creator creator;
 
-    public NamedArticleSummary(long id, String title, Instant createdAt, Creator creator) {
-        super(id, title, createdAt);
+    public NamedArticleSummary(ArticleSummary articleSummary, Creator creator) {
+        super(articleSummary.getId(),
+                articleSummary.getTitle(),
+                articleSummary.getCreatedAt(),
+                articleSummary.getStatus(),
+                articleSummary.getModeratorComment());
         this.creator = creator;
     }
 }
