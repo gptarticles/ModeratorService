@@ -14,7 +14,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
-import java.net.ConnectException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -113,7 +112,7 @@ public class ArticleModerationServiceTest {
      * Test {@link ArticleModerationService#getArticleSummaries(int)} method.
      */
     @Test
-    public void getArticleSummaries() throws ConnectException {
+    public void getArticleSummaries() {
         Instant createdAt1 = TestUtils.createInstantOf(2021, 1, 1, 12, 30, 0);
         Instant createdAt2 = TestUtils.createInstantOf(2022, 1, 1, 12, 30, 0);
 
@@ -171,7 +170,7 @@ public class ArticleModerationServiceTest {
      * Test {@link ArticleModerationService#getArticle(long)} method.
      */
     @Test
-    public void getArticle() throws ConnectException {
+    public void getArticle() {
         Instant createdAt = TestUtils.createInstantOf(2021, 1, 1, 12, 30, 0);
 
         ArticleSummaryEntity articleSummary = new ArticleSummaryEntity();
@@ -184,7 +183,7 @@ public class ArticleModerationServiceTest {
 
         String content = "c".repeat(200);
         when(articleSummaryRepository.findById(1L)).thenReturn(Optional.of(articleSummary));
-        when(contentService.getContent(1L)).thenReturn(content);
+        when(contentService.getContent(1L)).thenReturn(Optional.of(content));
         when(creatorService.getCreator(1L)).thenReturn(new Creator(1L, "alice"));
 
         Article article = articleModerationService.getArticle(1);
@@ -204,7 +203,21 @@ public class ArticleModerationServiceTest {
      */
     @Test
     public void getArticleWithContentStorageConnectException() {
-        // TODO
+        Instant createdAt = TestUtils.createInstantOf(2021, 1, 1, 12, 30, 0);
+
+        ArticleSummaryEntity articleSummary = new ArticleSummaryEntity();
+        articleSummary.setId(1L);
+        articleSummary.setTitle("a".repeat(15));
+        articleSummary.setStatus(ModerationStatus.EDIT_REQUESTED);
+        articleSummary.setModeratorComment(new ModeratorCommentEntity(1L, "comment"));
+        articleSummary.setCreatedAt(createdAt);
+        articleSummary.setCreatorId(1L);
+
+        when(articleSummaryRepository.findById(1L)).thenReturn(Optional.of(articleSummary));
+        doThrow(new ExternalConnectException("test", null)).when(contentService).getContent(1L);
+
+        assertThrows(ExternalConnectException.class,
+                () -> articleModerationService.getArticle(1));
     }
 
     /**
@@ -268,7 +281,7 @@ public class ArticleModerationServiceTest {
      * Test {@link ArticleModerationService#saveArticle(long, CreateArticleDto)} method.
      */
     @Test
-    public void createArticle() throws ConnectException {
+    public void createArticle() {
         Instant createdAt = TestUtils.createInstantOf(2021, 1, 1, 12, 30, 0);
 
         String testTitle = "a".repeat(15);
@@ -379,7 +392,7 @@ public class ArticleModerationServiceTest {
      * Test {@link ArticleModerationService#saveArticle(long, CreateArticleDto)} method.
      */
     @Test
-    public void publishArticle() throws ConnectException {
+    public void publishArticle() {
         String testTitle = "a".repeat(15);
         String testContent = "c".repeat(100);
 
@@ -389,7 +402,7 @@ public class ArticleModerationServiceTest {
         articleSummary.setCreatorId(777L);
 
         when(articleSummaryRepository.findById(1L)).thenReturn(Optional.of(articleSummary));
-        when(contentService.getContent(1L)).thenReturn(testContent);
+        when(contentService.getContent(1L)).thenReturn(Optional.of(testContent));
         doNothing().when(articleService).saveArticle(any());
         doNothing().when(articleSummaryRepository).deleteById(1L);
         doNothing().when(contentService).removeContent(1L);
@@ -426,7 +439,7 @@ public class ArticleModerationServiceTest {
      * Test {@link ArticleModerationService#publishArticle(long)} method with content storage connect exception.
      */
     @Test
-    public void publishArticleConnectError() throws ConnectException {
+    public void publishArticleConnectError() {
         String testTitle = "a".repeat(15);
         String testContent = "c".repeat(100);
 
@@ -436,12 +449,12 @@ public class ArticleModerationServiceTest {
         articleSummary.setCreatorId(777L);
 
         when(articleSummaryRepository.findById(1L)).thenReturn(Optional.of(articleSummary));
-        when(contentService.getContent(1L)).thenReturn(testContent);
+        when(contentService.getContent(1L)).thenReturn(Optional.of(testContent));
 
-        ConnectException connectException = new ConnectException("test");
+        ExternalConnectException connectException = new ExternalConnectException("test", new Exception());
         doThrow(connectException).when(articleService).saveArticle(any());
 
-        ConnectException thrownEx = assertThrows(ConnectException.class,
+        ExternalConnectException thrownEx = assertThrows(ExternalConnectException.class,
                 () -> articleModerationService.publishArticle(1L));
         assertSame(connectException, thrownEx);
     }
@@ -541,7 +554,7 @@ public class ArticleModerationServiceTest {
      * Test {@link ArticleModerationService#removeArticle(long)} method.
      */
     @Test
-    public void removeArticle() throws ConnectException {
+    public void removeArticle() {
         when(articleSummaryRepository.existsById(1L)).thenReturn(true);
         doNothing().when(articleSummaryRepository).deleteById(1L);
         doNothing().when(contentService).removeContent(1L);

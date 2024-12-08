@@ -15,7 +15,6 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 
-import java.net.ConnectException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -74,10 +73,10 @@ public class ArticleModerationService {
      * Get summaries of articles for moderation
      * @param page Page number
      * @return List of article summaries
-     * @throws ConnectException if connection to external services was failed
+     * @throws ExternalConnectException if connection to external services was failed
      */
-    @Transactional(propagation = Propagation.SUPPORTS, rollbackFor = ConnectException.class)
-    public List<NamedArticleSummary> getArticleSummaries(@Min(1) int page) throws ConnectException {
+    @Transactional(propagation = Propagation.SUPPORTS, rollbackFor = ExternalConnectException.class)
+    public List<NamedArticleSummary> getArticleSummaries(@Min(1) int page) {
         PageRequest pageRequest = PageRequest.of(page - 1, ARTICLE_SUMMARIES_PAGE_SIZE);
 
         List<ArticleSummaryEntity> summaryEntities = articleSummaryRepository.findAll(pageRequest);
@@ -96,17 +95,17 @@ public class ArticleModerationService {
      * Get moderating article by ID
      * @param articleId ID of the article
      * @return Article
-     * @throws ConnectException if connection to external services was failed
+     * @throws ExternalConnectException if connection to external services was failed
      * @throws NoSuchArticleException if the article was not found
      */
     @Transactional(
             propagation = Propagation.SUPPORTS,
-            rollbackFor = {NoSuchArticleException.class, ConnectException.class})
-    public Article getArticle(@Min(1) long articleId) throws ConnectException {
+            rollbackFor = {NoSuchArticleException.class, ExternalConnectException.class})
+    public Article getArticle(@Min(1) long articleId) {
         ArticleSummaryEntity summaryEntity = articleSummaryRepository
                 .findById(articleId)
                 .orElseThrow(() -> new NoSuchArticleException(articleId));
-        String content = contentService.getContent(articleId);
+        String content = contentService.getContent(articleId).orElseThrow(() -> new NoSuchArticleException(articleId));
         Creator creator = creatorService.getCreator(summaryEntity.getCreatorId());
         return articleFromSummaryEntity(summaryEntity, content, creator);
     }
@@ -127,10 +126,10 @@ public class ArticleModerationService {
      * Save article for moderation
      * @param creatorId ID of the creator
      * @param createDto DTO with article data
-     * @throws ConnectException if connection to ${@link ContentService} was failed
+     * @throws ExternalConnectException if connection to ${@link ContentService} was failed
      */
-    @Transactional(propagation = Propagation.REQUIRED, rollbackFor = ConnectException.class)
-    public void saveArticle(@Min(1) long creatorId, @Valid CreateArticleDto createDto) throws ConnectException {
+    @Transactional(propagation = Propagation.REQUIRED, rollbackFor = ExternalConnectException.class)
+    public void saveArticle(@Min(1) long creatorId, @Valid CreateArticleDto createDto) {
         ArticleSummaryEntity entity = new ArticleSummaryEntity(createDto.getTitle(), Instant.now(), creatorId);
         ArticleSummaryEntity savedEntity = articleSummaryRepository.save(entity);
         long articleId = savedEntity.getId();
@@ -140,11 +139,12 @@ public class ArticleModerationService {
     /**
      * Publish a moderating article
      * @param articleId ID of the article
-     * @throws ConnectException if connection to ${@link ContentService} was failed
+     * @throws ExternalConnectException if connection to ${@link ContentService} was failed
      * @throws NoSuchArticleException if the article was not found
      */
-    @Transactional(propagation = Propagation.REQUIRED, rollbackFor = ConnectException.class)
-    public void publishArticle(@Min(1) long articleId) throws ConnectException {
+    @Transactional(propagation = Propagation.REQUIRED,
+            rollbackFor = {ExternalConnectException.class, NoSuchArticleException.class})
+    public void publishArticle(@Min(1) long articleId) {
         Optional<ArticleSummaryEntity> summaryEntityOptional = articleSummaryRepository.findById(articleId);
         if (summaryEntityOptional.isEmpty()) {
             throw new NoSuchArticleException(articleId);
@@ -155,7 +155,7 @@ public class ArticleModerationService {
         }
 
         String title = summaryEntityOptional.get().getTitle();
-        String content = contentService.getContent(articleId);
+        String content = contentService.getContent(articleId).orElseThrow(() -> new NoSuchArticleException(articleId));;
         long creatorId = summaryEntityOptional.get().getCreatorId();
 
         articleService.saveArticle(new PublishArticleDto(title, content, creatorId));
@@ -185,10 +185,10 @@ public class ArticleModerationService {
      * Remove a moderating article
      * @param articleId ID of the article
      * @throws NoSuchArticleException if the article was not found
-     * @throws ConnectException if connection to ${@link ContentService} was failed
+     * @throws ExternalConnectException if connection to ${@link ContentService} was failed
      */
     @Transactional(propagation = Propagation.REQUIRED, rollbackFor = NoSuchArticleException.class)
-    public void removeArticle(@Min(1) long articleId) throws ConnectException {
+    public void removeArticle(@Min(1) long articleId) {
         if (!articleSummaryRepository.existsById(articleId)) {
             throw new NoSuchArticleException(articleId);
         }
@@ -199,9 +199,9 @@ public class ArticleModerationService {
     /**
      * Remove existing article
      * @param articleId ID of the article
-     * @throws ConnectException if connection to ${@link ContentService} was failed
+     * @throws ExternalConnectException if connection to ${@link ContentService} was failed
      */
-    private void removeExistingArticle(long articleId) throws ConnectException {
+    private void removeExistingArticle(long articleId) {
         contentService.removeContent(articleId);
         articleSummaryRepository.deleteById(articleId);
     }
