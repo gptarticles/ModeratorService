@@ -32,6 +32,7 @@
         <postgresql.version>42.7.4</postgresql.version>
         <aws.s3.version>2.28.24</aws.s3.version>
         <testcontainers.version>1.20.2</testcontainers.version>
+        <wiremock.version>3.9.1</wiremock.version>
     </properties>
     <dependencies>
         <dependency>
@@ -93,6 +94,13 @@
             <groupId>org.testcontainers</groupId>
             <artifactId>minio</artifactId>
             <version>${testcontainers.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.wiremock</groupId>
+            <artifactId>wiremock-standalone</artifactId>
+            <version>${wiremock.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

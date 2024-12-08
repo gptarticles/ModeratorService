@@ -4,6 +4,9 @@ import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 
+/**
+ * Configuration for the S3 storage.
+ */
 @ConfigurationProperties(prefix = "s3")
 @ConfigurationPropertiesScan
 @Data
