@@ -123,6 +123,9 @@
                             <artifactId>lombok</artifactId>
                         </exclude>
                     </excludes>
+                    <image>
+                        <name>gpt-articles/moderation-service</name>
+                    </image>
                 </configuration>
             </plugin>
         </plugins>
