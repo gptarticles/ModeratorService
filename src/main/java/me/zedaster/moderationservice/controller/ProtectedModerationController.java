@@ -2,12 +2,11 @@ package me.zedaster.moderationservice.controller;
 
 import lombok.RequiredArgsConstructor;
 import me.zedaster.moderationservice.dto.*;
-import me.zedaster.moderationservice.service.NoSuchArticleException;
 import me.zedaster.moderationservice.service.ArticleModerationService;
+import me.zedaster.moderationservice.service.NoSuchArticleException;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
-import java.net.ConnectException;
 import java.util.List;
 
 /**
@@ -30,7 +29,7 @@ public class ProtectedModerationController {
      */
     @GetMapping("/articles/user")
     public List<ArticleSummary> getUserArticles(
-            @RequestParam("tokenPayload[userId]") long userId,
+            @RequestParam("tokenPayload.sub") long userId,
             @RequestParam(value = "page", required = false) Integer pageNumber) {
         return articleModerationService.getUserArticleSummaries(userId, pageNumber);
     }
@@ -44,9 +43,9 @@ public class ProtectedModerationController {
      */
     @GetMapping("/articles/{id}")
     @Transactional
-    public Article getParticularArticle(@RequestParam("tokenPayload[role]") Role role,
-                                        @RequestParam("tokenPayload[userId]") long userId,
-                                        @PathVariable("id") long id) throws ConnectException {
+    public Article getParticularArticle(@RequestParam("tokenPayload.role") Role role,
+                                        @RequestParam("tokenPayload.sub") long userId,
+                                        @PathVariable("id") long id) {
         if (role == Role.USER && !articleModerationService.userOwnArticle(userId, id)) {
             throw new NoAccessException();
         }
@@ -60,7 +59,7 @@ public class ProtectedModerationController {
      * @param createArticleDto Article data
      */
     @PostMapping("/articles")
-    public void createArticle(@RequestParam("tokenPayload[userId]") long userId, @RequestBody CreateArticleDto createArticleDto) throws ConnectException {
+    public void createArticle(@RequestParam("tokenPayload.sub") long userId, @RequestBody CreateArticleDto createArticleDto) {
         articleModerationService.saveArticle(userId, createArticleDto);
     }
 
@@ -73,8 +72,8 @@ public class ProtectedModerationController {
      */
     @GetMapping("/articles")
     public List<NamedArticleSummary> getAllArticles(
-            @RequestParam("tokenPayload[role]") Role role,
-            @RequestParam(value = "page", required = false) Integer pageNumber) throws ConnectException {
+            @RequestParam("tokenPayload.role") Role role,
+            @RequestParam(value = "page", required = false) Integer pageNumber) {
         assertRoleCanModerate(role);
         return articleModerationService.getArticleSummaries(pageNumber);
     }
@@ -87,7 +86,7 @@ public class ProtectedModerationController {
      * @throws NoSuchArticleException If article was not found by specified ID
      */
     @PatchMapping("/articles/{id}/accept")
-    public void acceptArticle(@RequestParam("tokenPayload[role]") Role role, @PathVariable("id") long id) throws ConnectException {
+    public void acceptArticle(@RequestParam("tokenPayload.role") Role role, @PathVariable("id") long id)  {
         assertRoleCanModerate(role);
         articleModerationService.publishArticle(id);
     }
@@ -102,7 +101,7 @@ public class ProtectedModerationController {
      */
     @PatchMapping("/articles/{id}/askEdit")
     public void askEditArticle(
-            @RequestParam("tokenPayload[role]") Role role,
+            @RequestParam("tokenPayload.role") Role role,
             @PathVariable("id") long id,
             @RequestBody AskEditDto askEditDto) {
         assertRoleCanModerate(role);
@@ -117,7 +116,7 @@ public class ProtectedModerationController {
      * @throws NoSuchArticleException If article was not found by specified ID
      */
     @DeleteMapping("/articles/{id}")
-    public void removeArticle(@RequestParam("tokenPayload[role]") Role role, @PathVariable("id") long id) throws ConnectException {
+    public void removeArticle(@RequestParam("tokenPayload.role") Role role, @PathVariable("id") long id) {
         assertRoleCanModerate(role);
         articleModerationService.removeArticle(id);
     }

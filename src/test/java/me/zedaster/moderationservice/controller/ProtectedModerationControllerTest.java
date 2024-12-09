@@ -2,8 +2,8 @@ package me.zedaster.moderationservice.controller;
 
 import me.zedaster.moderationservice.TestUtils;
 import me.zedaster.moderationservice.dto.*;
-import me.zedaster.moderationservice.service.NoSuchArticleException;
 import me.zedaster.moderationservice.service.ArticleModerationService;
+import me.zedaster.moderationservice.service.NoSuchArticleException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -58,7 +58,7 @@ public class ProtectedModerationControllerTest {
         );
         when(articleModerationService.getUserArticleSummaries(123, 12)).thenReturn(articleSummaries);
 
-        mockMvc.perform(get("/protected/moderation/articles/user?tokenPayload[userId]=123&page=12"))
+        mockMvc.perform(get("/protected/moderation/articles/user?tokenPayload.sub=123&page=12"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.*", hasSize(2)))
                 .andExpect(jsonPath("$[0].id").value(1L))
@@ -77,7 +77,7 @@ public class ProtectedModerationControllerTest {
         when(articleModerationService.userOwnArticle(456L, 123L)).thenReturn(true);
         when(articleModerationService.getArticle(123)).thenReturn(fakeArticle);
 
-        mockMvc.perform(get("/protected/moderation/articles/123?tokenPayload[userId]=456&tokenPayload[role]=USER"))
+        mockMvc.perform(get("/protected/moderation/articles/123?tokenPayload.sub=456&tokenPayload.role=USER"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.*", hasSize(6)))
                 .andExpect(jsonPath("$.id").value(1L))
@@ -100,7 +100,7 @@ public class ProtectedModerationControllerTest {
         when(articleModerationService.userOwnArticle(456L, 123L)).thenReturn(true);
         when(articleModerationService.getArticle(123)).thenReturn(fakeArticle);
 
-        mockMvc.perform(get("/protected/moderation/articles/123?tokenPayload[userId]=456&tokenPayload[role]=USER"))
+        mockMvc.perform(get("/protected/moderation/articles/123?tokenPayload.sub=456&tokenPayload.role=USER"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.*", hasSize(7)))
                 .andExpect(jsonPath("$.id").value(1L))
@@ -121,7 +121,7 @@ public class ProtectedModerationControllerTest {
                 ModerationStatus.MODERATING, null, new Creator(456L, "Alice"));
         when(articleModerationService.getArticle(1)).thenReturn(fakeArticle);
 
-        mockMvc.perform(get("/protected/moderation/articles/1?tokenPayload[role]=MODERATOR&tokenPayload[userId]=777"))
+        mockMvc.perform(get("/protected/moderation/articles/1?tokenPayload.role=MODERATOR&tokenPayload.sub=777"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.*", hasSize(6)))
                 .andExpect(jsonPath("$.id").value(1L))
@@ -140,7 +140,7 @@ public class ProtectedModerationControllerTest {
     public void getParticularForeignArticleByUser() throws Exception {
         when(articleModerationService.userOwnArticle(456L, 123L)).thenReturn(false);
 
-        testNoAccess(get("/protected/moderation/articles/123?tokenPayload[userId]=456&tokenPayload[role]=USER"));
+        testNoAccess(get("/protected/moderation/articles/123?tokenPayload.sub=456&tokenPayload.role=USER"));
 
         verify(articleModerationService, times(1)).userOwnArticle(456L, 123L);
         verify(articleModerationService, never()).getArticle(anyLong());
@@ -151,7 +151,7 @@ public class ProtectedModerationControllerTest {
         doThrow(new NoSuchArticleException(NOT_FOUND_ARTICLE_ID))
                 .when(articleModerationService).getArticle(NOT_FOUND_ARTICLE_ID);
 
-        testNotFound(get("/protected/moderation/articles/%d?tokenPayload[role]=MODERATOR&tokenPayload[userId]=777"
+        testNotFound(get("/protected/moderation/articles/%d?tokenPayload.role=MODERATOR&tokenPayload.sub=777"
                 .formatted(NOT_FOUND_ARTICLE_ID)));
     }
 
@@ -166,7 +166,7 @@ public class ProtectedModerationControllerTest {
                   "content": "%s"
                 }""".formatted("a".repeat(15), "b".repeat(100));
 
-        mockMvc.perform(post("/protected/moderation/articles?tokenPayload[userId]=123")
+        mockMvc.perform(post("/protected/moderation/articles?tokenPayload.sub=123")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content((contentJson)))
                 .andExpect(status().is(200));
@@ -195,7 +195,7 @@ public class ProtectedModerationControllerTest {
                 ));
         when(articleModerationService.getArticleSummaries(12)).thenReturn(articleSummaries);
 
-        mockMvc.perform(get("/protected/moderation/articles?tokenPayload[role]=MODERATOR&tokenPayload[userId]=123&page=12"))
+        mockMvc.perform(get("/protected/moderation/articles?tokenPayload.role=MODERATOR&tokenPayload.sub=123&page=12"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.*", hasSize(2)))
                 .andExpect(jsonPath("$[0].id").value(1L))
@@ -214,27 +214,27 @@ public class ProtectedModerationControllerTest {
 
     @Test
     public void getAllArticlesWithWrongRole() throws Exception {
-        testNoAccess(get("/protected/moderation/articles?tokenPayload[role]=USER&tokenPayload[userId]=123&page=12"));
+        testNoAccess(get("/protected/moderation/articles?tokenPayload.role=USER&tokenPayload.sub=123&page=12"));
     }
 
     @Test
     public void acceptArticle() throws Exception {
         doNothing().when(articleModerationService).publishArticle(1L);
-        mockMvc.perform(patch("/protected/moderation/articles/1/accept?tokenPayload[role]=MODERATOR"))
+        mockMvc.perform(patch("/protected/moderation/articles/1/accept?tokenPayload.role=MODERATOR"))
                 .andExpect(status().isOk());
         verify(articleModerationService, times(1)).publishArticle(1L);
     }
 
     @Test
     public void acceptArticleWithWrongRole() throws Exception {
-        testNoAccess(patch("/protected/moderation/articles/321/accept?tokenPayload[role]=USER"));
+        testNoAccess(patch("/protected/moderation/articles/321/accept?tokenPayload.role=USER"));
     }
 
     @Test
     public void acceptNonExistentArticle() throws Exception {
         doThrow(new NoSuchArticleException(NOT_FOUND_ARTICLE_ID))
                 .when(articleModerationService).publishArticle(NOT_FOUND_ARTICLE_ID);
-        testNotFound(patch("/protected/moderation/articles/%d/accept?tokenPayload[role]=MODERATOR"
+        testNotFound(patch("/protected/moderation/articles/%d/accept?tokenPayload.role=MODERATOR"
                 .formatted(NOT_FOUND_ARTICLE_ID)));
     }
 
@@ -242,7 +242,7 @@ public class ProtectedModerationControllerTest {
     public void askEdit() throws Exception {
         doNothing().when(articleModerationService).askEdit(321L, "Test comment");
 
-        mockMvc.perform(patch("/protected/moderation/articles/321/askEdit?tokenPayload[role]=MODERATOR")
+        mockMvc.perform(patch("/protected/moderation/articles/321/askEdit?tokenPayload.role=MODERATOR")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content((ASK_EDIT_JSON)))
                 .andExpect(status().isOk());
@@ -252,7 +252,7 @@ public class ProtectedModerationControllerTest {
 
     @Test
     public void askEditWrongRole() throws Exception {
-        testNoAccess(patch("/protected/moderation/articles/321/askEdit?tokenPayload[role]=USER")
+        testNoAccess(patch("/protected/moderation/articles/321/askEdit?tokenPayload.role=USER")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(ASK_EDIT_JSON));
     }
@@ -261,7 +261,7 @@ public class ProtectedModerationControllerTest {
     public void askEditNonExistentArticle() throws Exception {
         doThrow(new NoSuchArticleException(NOT_FOUND_ARTICLE_ID))
                 .when(articleModerationService).askEdit(eq(NOT_FOUND_ARTICLE_ID), anyString());
-        testNotFound(patch("/protected/moderation/articles/%d/askEdit?tokenPayload[role]=MODERATOR"
+        testNotFound(patch("/protected/moderation/articles/%d/askEdit?tokenPayload.role=MODERATOR"
                 .formatted(NOT_FOUND_ARTICLE_ID))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(ASK_EDIT_JSON));
@@ -271,21 +271,21 @@ public class ProtectedModerationControllerTest {
     @Test
     public void removeArticle() throws Exception {
         doNothing().when(articleModerationService).removeArticle(123);
-        mockMvc.perform(delete("/protected/moderation/articles/123?tokenPayload[role]=MODERATOR"))
+        mockMvc.perform(delete("/protected/moderation/articles/123?tokenPayload.role=MODERATOR"))
                 .andExpect(status().isOk());
         verify(articleModerationService, times(1)).removeArticle(123);
     }
 
     @Test
     public void removeArticleWrongRole() throws Exception {
-        testNoAccess(delete("/protected/moderation/articles/321?tokenPayload[role]=USER"));
+        testNoAccess(delete("/protected/moderation/articles/321?tokenPayload.role=USER"));
     }
 
     @Test
     public void removeNonExistentArticle() throws Exception {
         doThrow(new NoSuchArticleException(NOT_FOUND_ARTICLE_ID))
                 .when(articleModerationService).removeArticle(NOT_FOUND_ARTICLE_ID);
-        testNotFound(delete("/protected/moderation/articles/%s?tokenPayload[role]=MODERATOR"
+        testNotFound(delete("/protected/moderation/articles/%s?tokenPayload.role=MODERATOR"
                 .formatted(NOT_FOUND_ARTICLE_ID)));
     }
 
